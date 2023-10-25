@@ -12,9 +12,6 @@ from pathlib import Path
 import streamlit as st
 
 
-
-
-
 def convert_data_to_cvs(data_):
    return data_.to_csv(index=False).encode('utf-8')
 
@@ -185,7 +182,7 @@ input_file_option = st.selectbox(
 
 
 st.write('You selected:', input_file_option)
-input_file_option="./data/"+input_file_option
+
 
 
 st.sidebar.subheader('Interactive data selection')
@@ -214,84 +211,85 @@ st.sidebar.write('Init params:', init_params)
 
 
 if input_file_option != None:
+   input_file_option="./data/"+input_file_option
+   input_path = input_file_option#"raw_data_long.csv"
+   
+   
+   ###@st.cache_data
+   data = pd.read_csv(input_path,
+                      sep = separator,
+                      skiprows = skiprows,
+                      #index_col='temps',
+                      header=None,names=columns_label,
+                      usecols = usecols,
+                      # names = header,
+                      engine = 'python')
 
-    input_path = input_file_option#"raw_data_long.csv"
+   
+   st.sidebar.markdown("## option config")
+   
 
+   max_event = max(data["nb de coups"])
+   max_time = data["temps"].index.size
+   
+   bkg_level = st.sidebar.slider('level of bkg?', min_value=0, max_value=max_event, step=1)
+   st.sidebar.write("Bkg level is ", bkg_level)
+   
 
-    ###@st.cache_data
-    data = pd.read_csv(input_path,
-                       sep = separator,
-                       skiprows = skiprows,
-                       #index_col='temps',
-                       header=None,names=columns_label,
-                       usecols = usecols,
-                       # names = header,
-                       engine = 'python')
+   time_values = st.sidebar.slider(
+      'Select a range of time',
+      0, max_time, (0, max_time))
 
-
-    st.sidebar.markdown("## option config")
-    
-
-    max_event = max(data["nb de coups"])
-    max_time = data["temps"].index.size
-    
-    bkg_level = st.sidebar.slider('level of bkg?', min_value=0, max_value=max_event, step=1)
-    st.sidebar.write("Bkg level is ", bkg_level)
-
-
-    time_values = st.sidebar.slider(
-        'Select a range of time',
-        0, max_time, (0, max_time))
-    st.sidebar.write('Values:', time_values)
+   st.sidebar.write('Values:', time_values)
     
 
         
-    clean_data = substract_bkg_level(data,bkg_level)
-    clean_data = selected_data(clean_data,time_values[0],time_values[1])
-
-
-    fitted_params = fit_model(fit_type,clean_data,init_params)
-
-    fitted_data = get_fitted_model(clean_data,fit_type,fitted_params)
-    
-    st.write('fitted parameters : ',fitted_params)
-    st.write('T1/2 : ',math.log(2)/fitted_params[1], ' s')
-
-
-    csv_data = convert_data_to_cvs(clean_data)
-
-    st.download_button(
-       "Download modified data as CSV",
-       csv_data,
-       "file.csv",
-       "text/csv",
-       key='download-csv'
+   clean_data = substract_bkg_level(data,bkg_level)
+   clean_data = selected_data(clean_data,time_values[0],time_values[1])
+   
+   
+   fitted_params = fit_model(fit_type,clean_data,init_params)
+   
+   fitted_data = get_fitted_model(clean_data,fit_type,fitted_params)
+   
+   st.write('fitted parameters : ',fitted_params)
+   st.write('T1/2 : ',math.log(2)/fitted_params[1], ' s')
+   
+   
+   csv_data = convert_data_to_cvs(clean_data)
+   
+   st.download_button(
+      "Download modified data as CSV",
+      csv_data,
+      "file.csv",
+      "text/csv",
+      key='download-csv'
    )
+   
 
 
-
-    st.subheader('Cleaned data display with fit')
-    fig2,ax2  = plt.subplots()
-    ax2.grid()
-    ax2.plot(clean_data["temps"],clean_data["nb de coups"],'*b',label='data')
-    ax2.plot(fitted_data["temps"],fitted_data["nb de coups"],'-r',label='data')
-    st.pyplot(fig2)
-
-    with st.expander("See notes"):
-
-       st.markdown("""
-       The N=f(t) plot shows the radioactive decay for an isotope.
-       
-       * The x-axis shows time
-       * The y-axis shows Nb of decay / 10 s
-       
-       See also:
-       
-       * [Radon decay](https://sciencedemonstrations.fas.harvard.edu/presentations/radons-progeny-decay)
-       * [RAdioactive decay](https://www.bfs.de/EN/topics/ion/environment/radon/introduction/introduction_node.html)
+   st.subheader('Cleaned data display with fit')
+   fig2,ax2  = plt.subplots()
+   ax2.grid()
+   ax2.plot(clean_data["temps"],clean_data["nb de coups"],'*b',label='data')
+   ax2.plot(fitted_data["temps"],fitted_data["nb de coups"],'-r',label='data')
+   st.pyplot(fig2)
+   
+   with st.expander("See notes"):
       
-       """)
-       
+      st.markdown("""
+      The N=f(t) plot shows the radioactive decay for an isotope.
+      
+      * The x-axis shows time
+      * The y-axis shows Nb of decay / 10 s
+      
+      See also:
+      
+      * [Radon decay](https://sciencedemonstrations.fas.harvard.edu/presentations/radons-progeny-decay)
+      * [RAdioactive decay](https://www.bfs.de/EN/topics/ion/environment/radon/introduction/introduction_node.html)
+      
+      """)
+      
       
        
        
